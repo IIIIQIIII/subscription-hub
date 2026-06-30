@@ -410,14 +410,6 @@ function App() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
 
-  if (hasSupabaseConfig && auth.loading) {
-    return <main className="empty-state">正在检查登录状态</main>;
-  }
-
-  if (hasSupabaseConfig && !auth.session) {
-    return <AuthPanel />;
-  }
-
   const filtered = useMemo(() => {
     return items.filter((item) => {
       const matchesQuery = `${item.name} ${item.plan} ${item.notes}`.toLowerCase().includes(query.toLowerCase());
@@ -430,6 +422,14 @@ function App() {
   const nextDecision = useMemo(() => {
     return summary.dueSoon[0] || summary.lowValue[0];
   }, [summary]);
+
+  if (hasSupabaseConfig && auth.loading) {
+    return <main className="empty-state">正在检查登录状态</main>;
+  }
+
+  if (hasSupabaseConfig && !auth.session) {
+    return <AuthPanel />;
+  }
 
   return (
     <main>

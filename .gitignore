@@ -5,3 +5,4 @@ data/subscriptions.json
 .env
 .env.local
 .DS_Store
+supabase/.temp/
