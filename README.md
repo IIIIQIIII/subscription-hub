@@ -45,6 +45,12 @@ vercel --prod
 
 ## CLI
 
+快速安装：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IIIIQIIII/subscription-hub/main/install.sh | bash
+```
+
 本地开发时先链接一次命令：
 
 ```bash
