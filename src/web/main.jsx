@@ -7,6 +7,8 @@ import {
   ExternalLink,
   Filter,
   Gauge,
+  Github,
+  Languages,
   PauseCircle,
   Plus,
   RefreshCw,
@@ -19,6 +21,8 @@ import { fromDbRow, toDbInsert } from "../shared/dbMapping.js";
 import { daysUntil, formatMoney, monthlyEquivalent, summarizeSubscriptions } from "../shared/schema.js";
 import { hasSupabaseConfig, supabase } from "./supabaseClient.js";
 import "./styles.css";
+
+const repoUrl = "https://github.com/IIIIQIIII/subscription-hub";
 
 const emptyForm = {
   name: "",
@@ -36,23 +40,184 @@ const emptyForm = {
   usefulness: 3
 };
 
-const categoryLabels = {
-  ai: "AI",
-  devtools: "开发",
-  design: "设计",
-  productivity: "效率",
-  cloud: "云服务",
-  media: "媒体",
-  finance: "财务",
-  other: "其他"
+const copy = {
+  en: {
+    categories: {
+      ai: "AI",
+      devtools: "Dev tools",
+      design: "Design",
+      productivity: "Productivity",
+      cloud: "Cloud",
+      media: "Media",
+      finance: "Finance",
+      other: "Other"
+    },
+    statuses: {
+      active: "Active",
+      trial: "Trial",
+      paused: "Paused",
+      cancelled: "Cancelled"
+    },
+    cycles: {
+      weekly: "Weekly",
+      monthly: "Monthly",
+      quarterly: "Quarterly",
+      annual: "Annual"
+    },
+    owners: {
+      me: "Managed by me",
+      agent: "Managed by Agent",
+      team: "Team"
+    },
+    shortOwners: {
+      me: "Me",
+      agent: "Agent",
+      team: "Team"
+    },
+    authTitle: "Sign in to Subscription Hub",
+    signInBusy: "Redirecting",
+    signInGoogle: "Continue with Google",
+    openSource: "Open source",
+    refresh: "Refresh",
+    signOut: "Sign out",
+    appTitle: "Subscription Hub",
+    stats: {
+      monthly: "Monthly spend",
+      annual: "Annualized spend",
+      due: "Due in 14 days",
+      lowValue: "Low-value candidates"
+    },
+    items: "items",
+    decisionTitle: "Next suggested action",
+    decisionEmpty: "No urgent subscriptions right now. Good time for a monthly review.",
+    decisionText: (item) => `Review ${item.name}: next charge ${item.nextChargeDate}, value score ${item.usefulness}/5`,
+    addTitle: "Add subscription",
+    fields: {
+      name: "Name",
+      plan: "Plan",
+      amount: "Amount",
+      nextCharge: "Next charge",
+      cycle: "Cycle",
+      category: "Category",
+      owner: "Owner",
+      value: "Value score",
+      notes: "Notes"
+    },
+    saving: "Saving",
+    addButton: "Add subscription",
+    noNotes: "No notes",
+    monthlyAverage: "monthly avg",
+    dueFuture: (days) => `${days} days left`,
+    duePast: (days) => `${days} days overdue`,
+    openWebsite: "Open website",
+    markCancelled: "Mark cancelled",
+    delete: "Delete",
+    listTitle: "Subscriptions",
+    searchPlaceholder: "Search name, plan, notes",
+    statusFilter: "Status filter",
+    filters: {
+      all: "All",
+      active: "Active",
+      trial: "Trial",
+      cancelled: "Cancelled"
+    },
+    authChecking: "Checking sign-in status",
+    loadingData: "Loading subscriptions",
+    emptyList: "No matching subscriptions",
+    readError: "Unable to read subscription data",
+    saveError: "Save failed. Check the amount and date."
+  },
+  zh: {
+    categories: {
+      ai: "AI",
+      devtools: "开发",
+      design: "设计",
+      productivity: "效率",
+      cloud: "云服务",
+      media: "媒体",
+      finance: "财务",
+      other: "其他"
+    },
+    statuses: {
+      active: "使用中",
+      trial: "试用",
+      paused: "暂停",
+      cancelled: "已取消"
+    },
+    cycles: {
+      weekly: "每周",
+      monthly: "每月",
+      quarterly: "每季",
+      annual: "每年"
+    },
+    owners: {
+      me: "我管理",
+      agent: "Agent 管理",
+      team: "团队"
+    },
+    shortOwners: {
+      me: "我",
+      agent: "Agent",
+      team: "团队"
+    },
+    authTitle: "登录订阅管理中枢",
+    signInBusy: "正在跳转",
+    signInGoogle: "使用 Google 登录",
+    openSource: "开源项目",
+    refresh: "刷新",
+    signOut: "退出",
+    appTitle: "订阅管理中枢",
+    stats: {
+      monthly: "月均支出",
+      annual: "年化支出",
+      due: "14 天内扣费",
+      lowValue: "低价值候选"
+    },
+    items: "项",
+    decisionTitle: "下一步建议",
+    decisionEmpty: "目前没有紧急订阅，适合做一次月度复盘。",
+    decisionText: (item) => `检查 ${item.name}，下次扣费 ${item.nextChargeDate}，价值评分 ${item.usefulness}/5`,
+    addTitle: "新增订阅",
+    fields: {
+      name: "名称",
+      plan: "套餐",
+      amount: "金额",
+      nextCharge: "下次扣费",
+      cycle: "周期",
+      category: "类别",
+      owner: "管理者",
+      value: "价值评分",
+      notes: "备注"
+    },
+    saving: "保存中",
+    addButton: "添加订阅",
+    noNotes: "暂无备注",
+    monthlyAverage: "月均",
+    dueFuture: (days) => `${days} 天后`,
+    duePast: (days) => `已过 ${days} 天`,
+    openWebsite: "打开网站",
+    markCancelled: "标记取消",
+    delete: "删除",
+    listTitle: "订阅列表",
+    searchPlaceholder: "搜索名称、套餐、备注",
+    statusFilter: "状态筛选",
+    filters: {
+      all: "全部",
+      active: "使用中",
+      trial: "试用",
+      cancelled: "取消"
+    },
+    authChecking: "正在检查登录状态",
+    loadingData: "正在读取订阅数据",
+    emptyList: "没有匹配的订阅",
+    readError: "无法读取订阅数据",
+    saveError: "保存失败，请检查金额和日期"
+  }
 };
 
-const statusLabels = {
-  active: "使用中",
-  trial: "试用",
-  paused: "暂停",
-  cancelled: "已取消"
-};
+function initialLanguage() {
+  return window.localStorage.getItem("subhub-language") === "zh" ? "zh" : "en";
+}
 
 function useAuth() {
   const [session, setSession] = useState(null);
@@ -77,7 +242,7 @@ function useAuth() {
   return { session, loading };
 }
 
-function useSubscriptions(session) {
+function useSubscriptions(session, t) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -95,7 +260,7 @@ function useSubscriptions(session) {
         setItems(data.map(fromDbRow));
       } else {
         const response = await fetch("/api/subscriptions");
-        if (!response.ok) throw new Error("无法读取订阅数据");
+        if (!response.ok) throw new Error(t.readError);
         setItems(await response.json());
       }
     } catch (loadError) {
@@ -127,7 +292,7 @@ function useSubscriptions(session) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input)
     });
-    if (!response.ok) throw new Error("保存失败，请检查金额和日期");
+    if (!response.ok) throw new Error(t.saveError);
     const created = await response.json();
     setItems((current) => [...current, created].sort((a, b) => a.nextChargeDate.localeCompare(b.nextChargeDate)));
     return created;
@@ -188,7 +353,7 @@ function MoneyTotals({ totals, field }) {
   );
 }
 
-function AuthPanel() {
+function AuthPanel({ t }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -213,18 +378,22 @@ function AuthPanel() {
           <Command size={22} aria-hidden="true" />
           <span>Subscription Hub</span>
         </div>
-        <h1>登录订阅管理中枢</h1>
+        <h1>{t.authTitle}</h1>
         <button className="google-action" type="button" onClick={signInWithGoogle} disabled={busy}>
           <span aria-hidden="true">G</span>
-          {busy ? "正在跳转" : "使用 Google 登录"}
+          {busy ? t.signInBusy : t.signInGoogle}
         </button>
+        <a className="source-link" href={repoUrl} target="_blank" rel="noreferrer">
+          <Github size={18} aria-hidden="true" />
+          {t.openSource}
+        </a>
         {message && <p className="form-error">{message}</p>}
       </section>
     </main>
   );
 }
 
-function AddSubscriptionForm({ onCreate }) {
+function AddSubscriptionForm({ onCreate, t }) {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -252,20 +421,20 @@ function AddSubscriptionForm({ onCreate }) {
     <form className="add-panel" onSubmit={submit}>
       <div className="panel-heading">
         <Plus size={20} aria-hidden="true" />
-        <h2>新增订阅</h2>
+        <h2>{t.addTitle}</h2>
       </div>
 
       <div className="form-grid">
         <label>
-          名称
+          {t.fields.name}
           <input value={form.name} onChange={(event) => updateField("name", event.target.value)} required />
         </label>
         <label>
-          套餐
+          {t.fields.plan}
           <input value={form.plan} onChange={(event) => updateField("plan", event.target.value)} />
         </label>
         <label>
-          金额
+          {t.fields.amount}
           <input
             type="number"
             min="0"
@@ -276,7 +445,7 @@ function AddSubscriptionForm({ onCreate }) {
           />
         </label>
         <label>
-          下次扣费
+          {t.fields.nextCharge}
           <input
             type="date"
             value={form.nextChargeDate}
@@ -285,32 +454,31 @@ function AddSubscriptionForm({ onCreate }) {
           />
         </label>
         <label>
-          周期
+          {t.fields.cycle}
           <select value={form.billingCycle} onChange={(event) => updateField("billingCycle", event.target.value)}>
-            <option value="weekly">每周</option>
-            <option value="monthly">每月</option>
-            <option value="quarterly">每季</option>
-            <option value="annual">每年</option>
-          </select>
-        </label>
-        <label>
-          类别
-          <select value={form.category} onChange={(event) => updateField("category", event.target.value)}>
-            {Object.entries(categoryLabels).map(([value, label]) => (
+            {Object.entries(t.cycles).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
         </label>
         <label>
-          管理者
-          <select value={form.owner} onChange={(event) => updateField("owner", event.target.value)}>
-            <option value="me">我</option>
-            <option value="agent">Agent</option>
-            <option value="team">团队</option>
+          {t.fields.category}
+          <select value={form.category} onChange={(event) => updateField("category", event.target.value)}>
+            {Object.entries(t.categories).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </label>
         <label>
-          价值评分
+          {t.fields.owner}
+          <select value={form.owner} onChange={(event) => updateField("owner", event.target.value)}>
+            {Object.entries(t.shortOwners).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.fields.value}
           <input
             type="range"
             min="1"
@@ -321,7 +489,7 @@ function AddSubscriptionForm({ onCreate }) {
           <span className="range-value">{form.usefulness}/5</span>
         </label>
         <label className="wide">
-          备注
+          {t.fields.notes}
           <input value={form.notes} onChange={(event) => updateField("notes", event.target.value)} />
         </label>
       </div>
@@ -329,13 +497,13 @@ function AddSubscriptionForm({ onCreate }) {
       {error && <p className="form-error">{error}</p>}
       <button className="primary-action" type="submit" disabled={saving}>
         <Plus size={18} aria-hidden="true" />
-        {saving ? "保存中" : "添加订阅"}
+        {saving ? t.saving : t.addButton}
       </button>
     </form>
   );
 }
 
-function SubscriptionRow({ item, onCancel, onRemove }) {
+function SubscriptionRow({ item, onCancel, onRemove, t }) {
   const [busy, setBusy] = useState(false);
   const dueIn = daysUntil(item.nextChargeDate);
   const isSoon = dueIn >= 0 && dueIn <= 7;
@@ -360,34 +528,34 @@ function SubscriptionRow({ item, onCancel, onRemove }) {
       <div className="subscription-main">
         <div className="name-line">
           <h3>{item.name}</h3>
-          <span>{item.plan || categoryLabels[item.category]}</span>
+          <span>{item.plan || t.categories[item.category]}</span>
         </div>
-        <p>{item.notes || "暂无备注"}</p>
+        <p>{item.notes || t.noNotes}</p>
         <div className="meta-line">
-          <span>{categoryLabels[item.category]}</span>
-          <span>{item.owner === "agent" ? "Agent 管理" : item.owner === "team" ? "团队" : "我管理"}</span>
-          <span>{statusLabels[item.status]}</span>
+          <span>{t.categories[item.category]}</span>
+          <span>{t.owners[item.owner]}</span>
+          <span>{t.statuses[item.status]}</span>
         </div>
       </div>
       <div className="subscription-money">
         <strong>{formatMoney(Number(item.amount), item.currency)}</strong>
-        <span>{cycleText(item.billingCycle)} · 月均 {formatMoney(monthlyEquivalent(item), item.currency)}</span>
+        <span>{t.cycles[item.billingCycle]} · {t.monthlyAverage} {formatMoney(monthlyEquivalent(item), item.currency)}</span>
       </div>
       <div className={`due ${isSoon ? "soon" : ""}`}>
         <CalendarClock size={18} aria-hidden="true" />
         <span>{item.nextChargeDate}</span>
-        <strong>{dueIn >= 0 ? `${dueIn} 天后` : `已过 ${Math.abs(dueIn)} 天`}</strong>
+        <strong>{dueIn >= 0 ? t.dueFuture(dueIn) : t.duePast(Math.abs(dueIn))}</strong>
       </div>
       <div className="row-actions">
         {item.website && (
-          <a className="icon-button" href={item.website} target="_blank" rel="noreferrer" title="打开网站">
+          <a className="icon-button" href={item.website} target="_blank" rel="noreferrer" title={t.openWebsite}>
             <ExternalLink size={18} aria-hidden="true" />
           </a>
         )}
-        <button className="icon-button" onClick={cancel} disabled={busy || item.status === "cancelled"} title="标记取消">
+        <button className="icon-button" onClick={cancel} disabled={busy || item.status === "cancelled"} title={t.markCancelled}>
           <XCircle size={18} aria-hidden="true" />
         </button>
-        <button className="icon-button danger" onClick={remove} disabled={busy} title="删除">
+        <button className="icon-button danger" onClick={remove} disabled={busy} title={t.delete}>
           <Trash2 size={18} aria-hidden="true" />
         </button>
       </div>
@@ -395,20 +563,18 @@ function SubscriptionRow({ item, onCancel, onRemove }) {
   );
 }
 
-function cycleText(cycle) {
-  return {
-    weekly: "每周",
-    monthly: "每月",
-    quarterly: "每季",
-    annual: "每年"
-  }[cycle];
-}
-
 function App() {
+  const [language, setLanguage] = useState(initialLanguage);
+  const t = copy[language];
   const auth = useAuth();
-  const { items, loading, error, load, createItem, cancelItem, removeItem } = useSubscriptions(auth.session);
+  const { items, loading, error, load, createItem, cancelItem, removeItem } = useSubscriptions(auth.session, t);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+
+  useEffect(() => {
+    window.localStorage.setItem("subhub-language", language);
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+  }, [language]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -424,62 +590,73 @@ function App() {
   }, [summary]);
 
   if (hasSupabaseConfig && auth.loading) {
-    return <main className="empty-state">正在检查登录状态</main>;
+    return <main className="empty-state">{t.authChecking}</main>;
   }
 
   if (hasSupabaseConfig && !auth.session) {
-    return <AuthPanel />;
+    return <AuthPanel t={t} />;
   }
 
   return (
     <main>
       <header className="topbar">
-        <div>
+        <div className="title-block">
           <div className="brand-line">
             <Command size={22} aria-hidden="true" />
             <span>Subscription Hub</span>
           </div>
-          <h1>订阅管理中枢</h1>
+          <h1>{t.appTitle}</h1>
         </div>
-        <button className="refresh-button" onClick={load}>
-          <RefreshCw size={18} aria-hidden="true" />
-          刷新
-        </button>
-        {hasSupabaseConfig && (
-          <button className="refresh-button" onClick={() => supabase.auth.signOut()}>
-            <XCircle size={18} aria-hidden="true" />
-            退出
+        <div className="topbar-actions">
+          <a className="refresh-button" href={repoUrl} target="_blank" rel="noreferrer">
+            <Github size={18} aria-hidden="true" />
+            GitHub
+          </a>
+          <div className="language-toggle" aria-label="Language">
+            <Languages size={18} aria-hidden="true" />
+            <button className={language === "en" ? "selected" : ""} onClick={() => setLanguage("en")}>EN</button>
+            <button className={language === "zh" ? "selected" : ""} onClick={() => setLanguage("zh")}>中文</button>
+          </div>
+          <button className="refresh-button" onClick={load}>
+            <RefreshCw size={18} aria-hidden="true" />
+            {t.refresh}
           </button>
-        )}
+          {hasSupabaseConfig && (
+            <button className="refresh-button" onClick={() => supabase.auth.signOut()}>
+              <XCircle size={18} aria-hidden="true" />
+              {t.signOut}
+            </button>
+          )}
+        </div>
       </header>
 
       <section className="stats-band">
-        <Stat icon={CircleDollarSign} label="月均支出" value={<MoneyTotals totals={summary.totalsByCurrency} field="monthlyTotal" />} tone="money" />
-        <Stat icon={Gauge} label="年化支出" value={<MoneyTotals totals={summary.totalsByCurrency} field="annualTotal" />} tone="annual" />
-        <Stat icon={CalendarClock} label="14 天内扣费" value={`${summary.dueSoon.length} 项`} tone="due" />
-        <Stat icon={PauseCircle} label="低价值候选" value={`${summary.lowValue.length} 项`} tone="risk" />
+        <Stat icon={CircleDollarSign} label={t.stats.monthly} value={<MoneyTotals totals={summary.totalsByCurrency} field="monthlyTotal" />} tone="money" />
+        <Stat icon={Gauge} label={t.stats.annual} value={<MoneyTotals totals={summary.totalsByCurrency} field="annualTotal" />} tone="annual" />
+        <Stat icon={CalendarClock} label={t.stats.due} value={`${summary.dueSoon.length} ${t.items}`} tone="due" />
+        <Stat icon={PauseCircle} label={t.stats.lowValue} value={`${summary.lowValue.length} ${t.items}`} tone="risk" />
       </section>
 
       <section className="decision-band">
         <Sparkles size={22} aria-hidden="true" />
         <div>
-          <span>下一步建议</span>
+          <span>{t.decisionTitle}</span>
           <strong>
             {nextDecision
-              ? `检查 ${nextDecision.name}，下次扣费 ${nextDecision.nextChargeDate}，价值评分 ${nextDecision.usefulness}/5`
-              : "目前没有紧急订阅，适合做一次月度复盘。"}
+              ? t.decisionText(nextDecision)
+              : t.decisionEmpty}
           </strong>
         </div>
       </section>
 
       <section className="workspace">
-        <AddSubscriptionForm onCreate={createItem} />
+        <AddSubscriptionForm onCreate={createItem} t={t} />
 
         <section className="list-panel">
           <div className="panel-heading list-heading">
             <div>
               <Filter size={20} aria-hidden="true" />
-              <h2>订阅列表</h2>
+              <h2>{t.listTitle}</h2>
             </div>
             <span>{filtered.length} / {items.length}</span>
           </div>
@@ -487,14 +664,14 @@ function App() {
           <div className="filters">
             <label className="search-field">
               <Search size={18} aria-hidden="true" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索名称、套餐、备注" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.searchPlaceholder} />
             </label>
-            <div className="segmented" role="tablist" aria-label="状态筛选">
+            <div className="segmented" role="tablist" aria-label={t.statusFilter}>
               {[
-                ["all", "全部"],
-                ["active", "使用中"],
-                ["trial", "试用"],
-                ["cancelled", "取消"]
+                ["all", t.filters.all],
+                ["active", t.filters.active],
+                ["trial", t.filters.trial],
+                ["cancelled", t.filters.cancelled]
               ].map(([value, label]) => (
                 <button key={value} className={status === value ? "selected" : ""} onClick={() => setStatus(value)}>
                   {label}
@@ -503,12 +680,12 @@ function App() {
             </div>
           </div>
 
-          {loading && <div className="empty-state">正在读取订阅数据</div>}
+          {loading && <div className="empty-state">{t.loadingData}</div>}
           {error && <div className="empty-state error">{error}</div>}
-          {!loading && !error && filtered.length === 0 && <div className="empty-state">没有匹配的订阅</div>}
+          {!loading && !error && filtered.length === 0 && <div className="empty-state">{t.emptyList}</div>}
           <div className="rows">
             {filtered.map((item) => (
-              <SubscriptionRow key={item.id} item={item} onCancel={cancelItem} onRemove={removeItem} />
+              <SubscriptionRow key={item.id} item={item} onCancel={cancelItem} onRemove={removeItem} t={t} />
             ))}
           </div>
         </section>

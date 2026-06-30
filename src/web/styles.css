@@ -53,8 +53,16 @@ main {
   padding: 10px 0 24px;
 }
 
-.topbar > div {
+.title-block {
   margin-right: auto;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .brand-line {
@@ -97,6 +105,41 @@ p {
   border-radius: 8px;
   padding: 0 16px;
   font-weight: 750;
+}
+
+a.refresh-button {
+  text-decoration: none;
+}
+
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 42px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.language-toggle svg {
+  color: var(--muted);
+  margin-inline: 4px;
+}
+
+.language-toggle button {
+  min-width: 44px;
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.language-toggle .selected {
+  background: var(--ink);
+  color: white;
 }
 
 .primary-action {
@@ -317,6 +360,21 @@ input[type="range"] {
 .google-action:disabled {
   opacity: 0.62;
   cursor: wait;
+}
+
+.source-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 800;
 }
 
 .link-button {
@@ -581,8 +639,21 @@ input[type="range"] {
     flex-direction: column;
   }
 
-  .refresh-button {
+  .title-block {
+    margin-right: 0;
+  }
+
+  .topbar-actions {
+    justify-content: stretch;
+  }
+
+  .refresh-button,
+  .language-toggle {
     width: 100%;
+  }
+
+  .language-toggle {
+    justify-content: center;
   }
 
   .filters {
