@@ -45,17 +45,21 @@ vercel --prod
 
 ## CLI
 
-快速安装：
+快速安装或更新：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/IIIIQIIII/subscription-hub/main/install.sh | bash
 ```
 
-本地开发时先链接一次命令：
+安装脚本会把项目放到 `~/.subhub/subscription-hub`，并在 `~/.local/bin/subhub` 创建命令。需要本机已有 `git`、`node` 和 `npm`；重复运行同一条命令会拉取最新版本并更新依赖。
+
+如果终端提示找不到 `subhub`，把 `~/.local/bin` 加到 PATH：
 
 ```bash
-npm link
+export PATH="$HOME/.local/bin:$PATH"
 ```
+
+本地开发时也可以在仓库内链接一次命令：`npm link`。
 
 ```bash
 subhub summary
