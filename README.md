@@ -17,7 +17,7 @@ Web 操作台默认在 `http://localhost:5177`，API 默认在 `http://localhost
 
 1. 在 Supabase 创建项目。
 2. 在 SQL Editor 运行 `supabase/migrations/202606300001_initial_schema.sql`。
-3. 在 Authentication 里启用 Email 登录。
+3. 在 Authentication 里启用 Google 登录。
 4. 把 Project URL 和 anon public key 写入 `.env.local`：
 
 ```bash
@@ -58,12 +58,14 @@ node bin/subhub.js cancel sub_figma
 
 ```bash
 node bin/subhub.js cloud configure --url "$SUBHUB_SUPABASE_URL" --anon-key "$SUBHUB_SUPABASE_ANON_KEY"
-node bin/subhub.js cloud login --email you@example.com --password your-password
+node bin/subhub.js cloud connect-project --project-ref your-project-ref --user-email you@gmail.com
 node bin/subhub.js cloud import-local --dry-run
 node bin/subhub.js cloud import-local
 node bin/subhub.js --remote list
 node bin/subhub.js --remote add --name "Example" --amount 9.99 --next 2026-07-15
 ```
+
+`connect-project` 会通过 Supabase CLI 读取项目权限，并把 agent 需要的云端连接信息保存在本机 `~/.subhub/config.json`。之后订阅管理都通过 `subhub --remote ...` 完成，不需要 agent 直接调用 Supabase API。
 
 数据默认保存在 `data/subscriptions.json`。如果需要让 agent 操作另一份数据，可以设置：
 

@@ -255,6 +255,25 @@ cloud
   });
 
 cloud
+  .command("connect-project")
+  .description("Connect remote CLI operations to a Supabase project and Google-auth user.")
+  .requiredOption("--project-ref <ref>", "Supabase project ref")
+  .requiredOption("--user-email <email>", "Supabase user email that owns managed subscriptions")
+  .option("--url <url>", "Supabase project URL")
+  .option("--anon-key <key>", "Supabase anon public key")
+  .option("--service-role-key <key>", "Supabase service role key. If omitted, subhub reads it through Supabase CLI.")
+  .action(async (options) => {
+    const user = await cloudStore.connectProjectCloud({
+      projectRef: options.projectRef,
+      userEmail: options.userEmail,
+      url: options.url,
+      anonKey: options.anonKey,
+      serviceRoleKey: options.serviceRoleKey
+    });
+    console.log(`Connected ${user.projectRef} for ${user.email}.`);
+  });
+
+cloud
   .command("whoami")
   .description("Show the current Supabase CLI identity.")
   .action(async () => {
@@ -272,7 +291,7 @@ cloud
 
 cloud
   .command("import-local")
-  .description("Import local JSON subscriptions into the logged-in Supabase account.")
+  .description("Upsert local JSON subscriptions into the configured Supabase account.")
   .option("--dry-run", "Preview the import without writing to Supabase")
   .action(async (options) => {
     const items = await localStore.listSubscriptions();
@@ -282,12 +301,8 @@ cloud
       return;
     }
 
-    let imported = 0;
-    for (const item of items) {
-      await cloudStore.createSubscription(item);
-      imported += 1;
-    }
-    console.log(`Imported ${imported} subscriptions into cloud mode.`);
+    const imported = await cloudStore.upsertSubscriptions(items);
+    console.log(`Upserted ${imported.length} subscriptions into cloud mode.`);
   });
 
 program.parseAsync(process.argv).catch((error) => {
