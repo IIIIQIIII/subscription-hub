@@ -1,0 +1,40 @@
+{
+  "subscriptions": [
+    {
+      "id": "sub_example_ai",
+      "name": "Example AI Tool",
+      "plan": "Pro",
+      "amount": 20,
+      "currency": "USD",
+      "billingCycle": "monthly",
+      "nextChargeDate": "2026-07-20",
+      "status": "active",
+      "category": "ai",
+      "owner": "me",
+      "paymentMethod": "Visa",
+      "website": "https://example.com",
+      "notes": "Sample subscription. Replace with your own data.",
+      "usefulness": 5,
+      "createdAt": "2026-06-30T00:00:00.000Z",
+      "updatedAt": "2026-06-30T00:00:00.000Z"
+    },
+    {
+      "id": "sub_example_cloud",
+      "name": "Example Cloud Service",
+      "plan": "Basic",
+      "amount": 225,
+      "currency": "CNY",
+      "billingCycle": "quarterly",
+      "nextChargeDate": "2026-07-21",
+      "status": "active",
+      "category": "cloud",
+      "owner": "agent",
+      "paymentMethod": "Unknown",
+      "website": "https://example.com",
+      "notes": "Sample quarterly CNY subscription.",
+      "usefulness": 4,
+      "createdAt": "2026-06-30T00:00:00.000Z",
+      "updatedAt": "2026-06-30T00:00:00.000Z"
+    }
+  ]
+}

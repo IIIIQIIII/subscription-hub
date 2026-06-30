@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.subscription-hub-*.log
+data/subscriptions.json
+.DS_Store
