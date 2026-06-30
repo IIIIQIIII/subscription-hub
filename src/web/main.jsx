@@ -15,7 +15,9 @@ import {
   Trash2,
   XCircle
 } from "lucide-react";
+import { fromDbRow, toDbInsert } from "../shared/dbMapping.js";
 import { daysUntil, formatMoney, monthlyEquivalent, summarizeSubscriptions } from "../shared/schema.js";
+import { hasSupabaseConfig, supabase } from "./supabaseClient.js";
 import "./styles.css";
 
 const emptyForm = {
@@ -52,7 +54,30 @@ const statusLabels = {
   cancelled: "已取消"
 };
 
-function useSubscriptions() {
+function useAuth() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(hasSupabaseConfig);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig) return;
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setLoading(false);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  return { session, loading };
+}
+
+function useSubscriptions(session) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,9 +86,18 @@ function useSubscriptions() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/subscriptions");
-      if (!response.ok) throw new Error("无法读取订阅数据");
-      setItems(await response.json());
+      if (hasSupabaseConfig) {
+        const { data, error: queryError } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .order("next_charge_date", { ascending: true });
+        if (queryError) throw queryError;
+        setItems(data.map(fromDbRow));
+      } else {
+        const response = await fetch("/api/subscriptions");
+        if (!response.ok) throw new Error("无法读取订阅数据");
+        setItems(await response.json());
+      }
     } catch (loadError) {
       setError(loadError.message);
     } finally {
@@ -72,10 +106,65 @@ function useSubscriptions() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (!hasSupabaseConfig || session) load();
+  }, [session?.user?.id]);
 
-  return { items, loading, error, load, setItems };
+  async function createItem(input) {
+    if (hasSupabaseConfig) {
+      const { data, error: insertError } = await supabase
+        .from("subscriptions")
+        .insert(toDbInsert(input, session.user.id))
+        .select("*")
+        .single();
+      if (insertError) throw insertError;
+      const created = fromDbRow(data);
+      setItems((current) => [...current, created].sort((a, b) => a.nextChargeDate.localeCompare(b.nextChargeDate)));
+      return created;
+    }
+
+    const response = await fetch("/api/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    if (!response.ok) throw new Error("保存失败，请检查金额和日期");
+    const created = await response.json();
+    setItems((current) => [...current, created].sort((a, b) => a.nextChargeDate.localeCompare(b.nextChargeDate)));
+    return created;
+  }
+
+  async function cancelItem(id) {
+    if (hasSupabaseConfig) {
+      const current = items.find((item) => item.id === id);
+      const { error: updateError } = await supabase
+        .from("subscriptions")
+        .update({
+          status: "cancelled",
+          notes: `Cancelled or marked for cancellation on ${new Date().toISOString().slice(0, 10)}.${current?.notes ? ` ${current.notes}` : ""}`
+        })
+        .eq("id", id);
+      if (updateError) throw updateError;
+      await load();
+      return;
+    }
+
+    await fetch(`/api/subscriptions/${id}/cancel`, { method: "POST" });
+    await load();
+  }
+
+  async function removeItem(id) {
+    if (hasSupabaseConfig) {
+      const { error: deleteError } = await supabase.from("subscriptions").delete().eq("id", id);
+      if (deleteError) throw deleteError;
+      setItems((current) => current.filter((item) => item.id !== id));
+      return;
+    }
+
+    await fetch(`/api/subscriptions/${id}`, { method: "DELETE" });
+    await load();
+  }
+
+  return { items, loading, error, load, createItem, cancelItem, removeItem };
 }
 
 function Stat({ icon: Icon, label, value, tone }) {
@@ -99,7 +188,59 @@ function MoneyTotals({ totals, field }) {
   );
 }
 
-function AddSubscriptionForm({ onCreated }) {
+function AuthPanel() {
+  const [mode, setMode] = useState("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+
+    const action = mode === "signin"
+      ? supabase.auth.signInWithPassword({ email, password })
+      : supabase.auth.signUp({ email, password });
+    const { error } = await action;
+
+    if (error) setMessage(error.message);
+    else if (mode === "signup") setMessage("账号已创建。如果项目开启邮件确认，请先完成邮箱确认。");
+    setBusy(false);
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-panel">
+        <div className="brand-line">
+          <Command size={22} aria-hidden="true" />
+          <span>Subscription Hub</span>
+        </div>
+        <h1>登录订阅管理中枢</h1>
+        <form onSubmit={submit}>
+          <label>
+            邮箱
+            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          </label>
+          <label>
+            密码
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          </label>
+          {message && <p className="form-error">{message}</p>}
+          <button className="primary-action" type="submit" disabled={busy}>
+            {busy ? "处理中" : mode === "signin" ? "登录" : "创建账号"}
+          </button>
+        </form>
+        <button className="link-button" type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
+          {mode === "signin" ? "没有账号，创建一个" : "已有账号，返回登录"}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+function AddSubscriptionForm({ onCreate }) {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -114,14 +255,7 @@ function AddSubscriptionForm({ onCreated }) {
     setError("");
 
     try {
-      const response = await fetch("/api/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      if (!response.ok) throw new Error("保存失败，请检查金额和日期");
-      const created = await response.json();
-      onCreated(created);
+      await onCreate(form);
       setForm(emptyForm);
     } catch (submitError) {
       setError(submitError.message);
@@ -217,22 +351,20 @@ function AddSubscriptionForm({ onCreated }) {
   );
 }
 
-function SubscriptionRow({ item, onChanged }) {
+function SubscriptionRow({ item, onCancel, onRemove }) {
   const [busy, setBusy] = useState(false);
   const dueIn = daysUntil(item.nextChargeDate);
   const isSoon = dueIn >= 0 && dueIn <= 7;
 
   async function cancel() {
     setBusy(true);
-    await fetch(`/api/subscriptions/${item.id}/cancel`, { method: "POST" });
-    await onChanged();
+    await onCancel(item.id);
     setBusy(false);
   }
 
   async function remove() {
     setBusy(true);
-    await fetch(`/api/subscriptions/${item.id}`, { method: "DELETE" });
-    await onChanged();
+    await onRemove(item.id);
     setBusy(false);
   }
 
@@ -289,9 +421,18 @@ function cycleText(cycle) {
 }
 
 function App() {
-  const { items, loading, error, load, setItems } = useSubscriptions();
+  const auth = useAuth();
+  const { items, loading, error, load, createItem, cancelItem, removeItem } = useSubscriptions(auth.session);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
+
+  if (hasSupabaseConfig && auth.loading) {
+    return <main className="empty-state">正在检查登录状态</main>;
+  }
+
+  if (hasSupabaseConfig && !auth.session) {
+    return <AuthPanel />;
+  }
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -320,6 +461,12 @@ function App() {
           <RefreshCw size={18} aria-hidden="true" />
           刷新
         </button>
+        {hasSupabaseConfig && (
+          <button className="refresh-button" onClick={() => supabase.auth.signOut()}>
+            <XCircle size={18} aria-hidden="true" />
+            退出
+          </button>
+        )}
       </header>
 
       <section className="stats-band">
@@ -342,11 +489,7 @@ function App() {
       </section>
 
       <section className="workspace">
-        <AddSubscriptionForm
-          onCreated={(created) => {
-            setItems((current) => [...current, created].sort((a, b) => a.nextChargeDate.localeCompare(b.nextChargeDate)));
-          }}
-        />
+        <AddSubscriptionForm onCreate={createItem} />
 
         <section className="list-panel">
           <div className="panel-heading list-heading">
@@ -381,7 +524,7 @@ function App() {
           {!loading && !error && filtered.length === 0 && <div className="empty-state">没有匹配的订阅</div>}
           <div className="rows">
             {filtered.map((item) => (
-              <SubscriptionRow key={item.id} item={item} onChanged={load} />
+              <SubscriptionRow key={item.id} item={item} onCancel={cancelItem} onRemove={removeItem} />
             ))}
           </div>
         </section>

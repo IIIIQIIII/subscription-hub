@@ -1,13 +1,6 @@
 import { Command } from "commander";
-import {
-  cancelSubscription,
-  createSubscription,
-  deleteSubscription,
-  getSubscription,
-  listSubscriptions,
-  subscriptionSummary,
-  updateSubscription
-} from "../server/store.js";
+import * as cloudStore from "./cloudStore.js";
+import * as localStore from "../server/store.js";
 import { daysUntil, formatMoney, monthlyEquivalent } from "../shared/schema.js";
 
 const program = new Command();
@@ -15,7 +8,17 @@ const program = new Command();
 program
   .name("subhub")
   .description("Manage Subscription Hub from the command line.")
-  .version("0.1.0");
+  .version("0.1.0")
+  .option("--remote", "Use Supabase cloud mode")
+  .option("--local", "Use local JSON mode");
+
+function store() {
+  const options = program.opts();
+  if (options.remote || (!options.local && process.env.SUBHUB_MODE === "cloud")) {
+    return cloudStore;
+  }
+  return localStore;
+}
 
 function cleanOptions(options) {
   return Object.fromEntries(
@@ -51,7 +54,7 @@ program
   .option("--category <category>", "Filter by category")
   .option("--json", "Print raw JSON")
   .action(async (options) => {
-    const items = await listSubscriptions(cleanOptions(options));
+    const items = await store().listSubscriptions(cleanOptions(options));
     if (options.json) {
       console.log(JSON.stringify(items, null, 2));
       return;
@@ -76,7 +79,7 @@ program
   .option("--notes <notes>", "Notes")
   .option("--value <usefulness>", "Usefulness score from 1 to 5", "3")
   .action(async (options) => {
-    const item = await createSubscription({
+    const item = await store().createSubscription({
       name: options.name,
       amount: options.amount,
       nextChargeDate: options.next,
@@ -99,7 +102,7 @@ program
   .description("Show one subscription by id or exact name.")
   .argument("<id>")
   .action(async (id) => {
-    const item = await getSubscription(id);
+    const item = await store().getSubscription(id);
     if (!item) {
       console.error("Subscription not found.");
       process.exitCode = 1;
@@ -141,7 +144,7 @@ program
       notes: options.notes,
       usefulness: options.value
     });
-    const item = await updateSubscription(id, patch);
+    const item = await store().updateSubscription(id, patch);
     if (!item) {
       console.error("Subscription not found.");
       process.exitCode = 1;
@@ -155,7 +158,7 @@ program
   .description("Mark a subscription as cancelled.")
   .argument("<id>")
   .action(async (id) => {
-    const item = await cancelSubscription(id);
+    const item = await store().cancelSubscription(id);
     if (!item) {
       console.error("Subscription not found.");
       process.exitCode = 1;
@@ -166,10 +169,10 @@ program
 
 program
   .command("remove")
-  .description("Remove a subscription from the data file.")
+  .description("Remove a subscription.")
   .argument("<id>")
   .action(async (id) => {
-    const removed = await deleteSubscription(id);
+    const removed = await store().deleteSubscription(id);
     if (!removed) {
       console.error("Subscription not found.");
       process.exitCode = 1;
@@ -184,7 +187,7 @@ program
   .option("--days <days>", "Window in days", "14")
   .option("--json", "Print raw JSON")
   .action(async (options) => {
-    const items = await listSubscriptions();
+    const items = await store().listSubscriptions();
     const windowDays = Number(options.days);
     const due = items
       .map((item) => ({ ...item, daysUntil: daysUntil(item.nextChargeDate) }))
@@ -202,7 +205,7 @@ program
   .command("summary")
   .description("Show monthly and annual subscription totals.")
   .action(async () => {
-    const summary = await subscriptionSummary();
+    const summary = await store().subscriptionSummary();
     console.log(`Active or trial subscriptions: ${summary.activeCount}/${summary.count}`);
     if (summary.totalsByCurrency.length) {
       console.log("Estimated monthly spend:");
@@ -225,6 +228,66 @@ program
       console.log("\nLow-value candidates:");
       printTable(summary.lowValue);
     }
+  });
+
+const cloud = program
+  .command("cloud")
+  .description("Configure and inspect Supabase cloud mode.");
+
+cloud
+  .command("configure")
+  .description("Store Supabase URL and anon key for remote CLI operations.")
+  .requiredOption("--url <url>", "Supabase project URL")
+  .requiredOption("--anon-key <key>", "Supabase anon public key")
+  .action(async (options) => {
+    await cloudStore.configureCloud({ url: options.url, anonKey: options.anonKey });
+    console.log("Cloud mode configured.");
+  });
+
+cloud
+  .command("login")
+  .description("Log in to Supabase for remote CLI operations.")
+  .requiredOption("--email <email>", "Account email")
+  .requiredOption("--password <password>", "Account password")
+  .action(async (options) => {
+    const user = await cloudStore.loginCloud(options);
+    console.log(`Logged in as ${user.email}.`);
+  });
+
+cloud
+  .command("whoami")
+  .description("Show the current Supabase CLI identity.")
+  .action(async () => {
+    const user = await cloudStore.whoamiCloud();
+    console.log(`${user.email} (${user.id})`);
+  });
+
+cloud
+  .command("logout")
+  .description("Remove stored Supabase session tokens.")
+  .action(async () => {
+    await cloudStore.logoutCloud();
+    console.log("Logged out of cloud mode.");
+  });
+
+cloud
+  .command("import-local")
+  .description("Import local JSON subscriptions into the logged-in Supabase account.")
+  .option("--dry-run", "Preview the import without writing to Supabase")
+  .action(async (options) => {
+    const items = await localStore.listSubscriptions();
+    if (options.dryRun) {
+      console.log(`Would import ${items.length} subscriptions.`);
+      printTable(items);
+      return;
+    }
+
+    let imported = 0;
+    for (const item of items) {
+      await cloudStore.createSubscription(item);
+      imported += 1;
+    }
+    console.log(`Imported ${imported} subscriptions into cloud mode.`);
   });
 
 program.parseAsync(process.argv).catch((error) => {
