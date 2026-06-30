@@ -289,6 +289,36 @@ input[type="range"] {
   gap: 14px;
 }
 
+.google-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.google-action span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  font-weight: 850;
+}
+
+.google-action:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
 .link-button {
   border: 0;
   background: transparent;

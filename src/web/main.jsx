@@ -189,24 +189,20 @@ function MoneyTotals({ totals, field }) {
 }
 
 function AuthPanel() {
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function submit(event) {
-    event.preventDefault();
+  async function signInWithGoogle() {
     setBusy(true);
     setMessage("");
-
-    const action = mode === "signin"
-      ? supabase.auth.signInWithPassword({ email, password })
-      : supabase.auth.signUp({ email, password });
-    const { error } = await action;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
 
     if (error) setMessage(error.message);
-    else if (mode === "signup") setMessage("账号已创建。如果项目开启邮件确认，请先完成邮箱确认。");
     setBusy(false);
   }
 
@@ -218,23 +214,11 @@ function AuthPanel() {
           <span>Subscription Hub</span>
         </div>
         <h1>登录订阅管理中枢</h1>
-        <form onSubmit={submit}>
-          <label>
-            邮箱
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          </label>
-          <label>
-            密码
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          </label>
-          {message && <p className="form-error">{message}</p>}
-          <button className="primary-action" type="submit" disabled={busy}>
-            {busy ? "处理中" : mode === "signin" ? "登录" : "创建账号"}
-          </button>
-        </form>
-        <button className="link-button" type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
-          {mode === "signin" ? "没有账号，创建一个" : "已有账号，返回登录"}
+        <button className="google-action" type="button" onClick={signInWithGoogle} disabled={busy}>
+          <span aria-hidden="true">G</span>
+          {busy ? "正在跳转" : "使用 Google 登录"}
         </button>
+        {message && <p className="form-error">{message}</p>}
       </section>
     </main>
   );
