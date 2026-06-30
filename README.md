@@ -45,24 +45,30 @@ vercel --prod
 
 ## CLI
 
+本地开发时先链接一次命令：
+
 ```bash
-node bin/subhub.js summary
-node bin/subhub.js list
-node bin/subhub.js due --days 14
-node bin/subhub.js add --name "Example" --amount 9.99 --next 2026-07-15 --cycle monthly --category ai --owner agent
-node bin/subhub.js update sub_openai --value 5 --notes "Daily AI workbench"
-node bin/subhub.js cancel sub_figma
+npm link
+```
+
+```bash
+subhub summary
+subhub list
+subhub due --days 14
+subhub add --name "Example" --amount 9.99 --next 2026-07-15 --cycle monthly --category ai --owner agent
+subhub update sub_openai --value 5 --notes "Daily AI workbench"
+subhub cancel sub_figma
 ```
 
 远程 Supabase 模式：
 
 ```bash
-node bin/subhub.js cloud configure --url "$SUBHUB_SUPABASE_URL" --anon-key "$SUBHUB_SUPABASE_ANON_KEY"
-node bin/subhub.js cloud connect-project --project-ref your-project-ref --user-email you@gmail.com
-node bin/subhub.js cloud import-local --dry-run
-node bin/subhub.js cloud import-local
-node bin/subhub.js --remote list
-node bin/subhub.js --remote add --name "Example" --amount 9.99 --next 2026-07-15
+subhub cloud configure --url "$SUBHUB_SUPABASE_URL" --anon-key "$SUBHUB_SUPABASE_ANON_KEY"
+subhub cloud connect-project --project-ref your-project-ref --user-email you@gmail.com
+subhub cloud import-local --dry-run
+subhub cloud import-local
+subhub --remote list
+subhub --remote add --name "Example" --amount 9.99 --next 2026-07-15
 ```
 
 `connect-project` 会通过 Supabase CLI 读取项目权限，并把 agent 需要的云端连接信息保存在本机 `~/.subhub/config.json`。之后订阅管理都通过 `subhub --remote ...` 完成，不需要 agent 直接调用 Supabase API。
@@ -70,7 +76,7 @@ node bin/subhub.js --remote add --name "Example" --amount 9.99 --next 2026-07-15
 数据默认保存在 `data/subscriptions.json`。如果需要让 agent 操作另一份数据，可以设置：
 
 ```bash
-SUBHUB_DATA_FILE=/absolute/path/subscriptions.json node bin/subhub.js list
+SUBHUB_DATA_FILE=/absolute/path/subscriptions.json subhub list
 ```
 
 真实订阅数据不会提交到 GitHub。仓库只包含 `data/subscriptions.example.json` 作为示例。
